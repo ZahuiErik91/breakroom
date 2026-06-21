@@ -19,7 +19,7 @@ Client (Hermes / Cursor / LiteLLM / AutoGen)
     ▼  base_url rewritten to Break Room proxy
 Worker route /:license/v1/chat/completions
     │
-    ├── KV license gate
+    ├── License validation
     ├── Rumination / panic detection
     └── Forward to upstream LLM provider
 ```
@@ -42,11 +42,10 @@ It edits only `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` in your local config file
 - `break-room/docs/E2E_TEST.md` – end-to-end flow
 - `break-room/docs/PITCH.md` – product narrative
 
-## Privacy / secrets
+## Privacy
 
 - No API keys, tokens, or live URLs are stored in this repo.
-- Worker secrets and Stripe webhook signing keys are set via `wrangler secret put` and never committed.
-- The local CLI only ever rewrites proxy URLs on the developer’s machine.
+- Secrets are configured via the Cloudflare dashboard and never committed.
 
 ## Tech stack
 
