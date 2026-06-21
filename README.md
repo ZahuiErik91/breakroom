@@ -42,11 +42,6 @@ It edits only `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` in your local config file
 - `break-room/docs/E2E_TEST.md` – end-to-end flow
 - `break-room/docs/PITCH.md` – product narrative
 
-## Privacy
-
-- No API keys, tokens, or live URLs are stored in this repo.
-- Secrets are configured via the Cloudflare dashboard and never committed.
-
 ## Tech stack
 
 Cloudflare Workers (nodejs_compat), Hono, Stripe Checkout, Cloudflare KV, OpenAI-compatible API layer.
