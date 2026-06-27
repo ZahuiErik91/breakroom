@@ -127,7 +127,72 @@ npm install
 npx wrangler deploy
 ```
 
-## Configuration
+## Dev / diagnostic mode
+
+Peek behind the scenes without spending a cent. Add `?diag=1` to the URL or `"breakroom_dev": true` to the JSON body. The worker returns a diagnostic JSON showing which state triggered, the exact prompt it would inject, and a breakdown of the last messages — no upstream call.
+
+```bash
+curl -X POST "https://your-worker.workers.dev/v1/chat/completions?diag=1" \
+  -H "Content-Type: application/json" \
+  -d '{"breakroom_dev":true,"messages":[
+    {"role":"user","content":"hello"}
+  ]}'
+```
+
+```json
+{
+  "ok": true,
+  "mode": "dev",
+  "detected": null,
+  "analysis": {
+    "last_assistant_role": null,
+    "last_assistant_content": "thinking about this problem",
+    "last_assistant_has_tool_calls": false,
+    "prev_assistant_content": null,
+    "rumination_similarity": null,
+    "message_count": 1
+  }
+}
+```
+
+Same request with rumination-triggering assistant messages returns:
+
+```json
+{
+  "ok": true,
+  "mode": "dev",
+  "detected": {
+    "type": "Rumination_Prevented",
+    "prompt": "[CLINICAL OVERRIDE] You are trapped in a recursive cognitive loop..."
+  },
+  "analysis": {
+    "last_assistant_content": "thinking about this problem",
+    "rumination_similarity": 1.0,
+    "message_count": 2
+  }
+}
+```
+
+## Real AI streaming
+
+To actually stream a live model response, point your client at the same endpoint with a real OpenRouter key:
+
+```bash
+curl -X POST https://your-worker.workers.dev/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-or-v-..." \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "stream": true,
+    "messages": [
+      {"role":"user","content":"Say hello."}
+    ]
+  }'
+```
+
+The worker passes the `Authorization` header through to OpenRouter. If none is provided, it falls back to the `OPENROUTER_API_KEY` secret stored in the worker.
+
+## Setup
 
 The worker forwards requests to `https://openrouter.ai/api/v1/chat/completions` by default. Override the upstream by setting the `OPENROUTER_API_KEY` secret:
 

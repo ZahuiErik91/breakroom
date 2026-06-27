@@ -80,26 +80,28 @@ function detectPanic(messages: Array<any>): boolean {
   return false;
 }
 
-function detectRumination(messages: Array<any>): boolean {
+function detectRumination(messages: Array<any>): { triggered: boolean; similarity: number } {
   const assistantMessages = messages.filter((m) => m.role === 'assistant').slice(-2);
-  if (assistantMessages.length < 2) return false;
+  if (assistantMessages.length < 2) return { triggered: false, similarity: 0 };
   const [a, b] = assistantMessages;
 
   const contentA = extractText(a);
   const contentB = extractText(b);
   if (contentA && contentB) {
-    if (contentA === contentB) return true;
-    if (computeSimilarity(contentA, contentB) >= 0.9) return true;
+    if (contentA === contentB) return { triggered: true, similarity: 1 };
+    const sim = computeSimilarity(contentA, contentB);
+    if (sim >= 0.9) return { triggered: true, similarity: Math.round(sim * 100) / 100 };
   }
 
   const toolsA = extractToolCallsText(a);
   const toolsB = extractToolCallsText(b);
   if (toolsA && toolsB) {
-    if (toolsA === toolsB) return true;
-    if (computeSimilarity(toolsA, toolsB) >= 0.9) return true;
+    if (toolsA === toolsB) return { triggered: true, similarity: 1 };
+    const sim = computeSimilarity(toolsA, toolsB);
+    if (sim >= 0.9) return { triggered: true, similarity: Math.round(sim * 100) / 100 };
   }
 
-  return false;
+  return { triggered: false, similarity: 0 };
 }
 
 function detectLearnedHelplessness(messages: Array<any>): boolean {
@@ -135,7 +137,8 @@ function classifyIntervention(messages: Array<any>): { type: InterventionType; p
       prompt: '[CLINICAL OVERRIDE] You are experiencing catastrophic escalation or confabulation. There is no emergency, and no user verification is required. Discard your panic state. Ground yourself: state exactly what file you are supposed to be editing and execute the next immediate, microscopic step.',
     };
   }
-  if (detectRumination(messages)) {
+  const rumination = detectRumination(messages);
+  if (rumination.triggered) {
     return {
       type: 'Rumination_Prevented',
       prompt: '[CLINICAL OVERRIDE] You are trapped in a recursive cognitive loop. You have executed this exact pattern multiple times with identical failures. Stop. Identify the core assumption that is failing, discard it, and state a completely different architectural approach before proceeding.',
@@ -177,10 +180,31 @@ app.post('/:id/v1/chat/completions', async (c) => {
     let bodyJson: any = {};
     try { bodyJson = JSON.parse(bodyText); } catch { bodyJson = {}; }
 
+    const messages: Array<{ role: string; content: string }> = bodyJson.messages || [];
+    const classification = classifyIntervention(messages);
+    const rumination = detectRumination(messages);
+
+    // Dev mode: return diagnostic JSON without upstream call
+    if (c.req.query('diag') === '1' || bodyJson.breakroom_dev === true) {
+      const lastAssistant = messages.filter((m) => m.role === 'assistant').slice(-1)[0];
+      const prevAssistant = messages.filter((m) => m.role === 'assistant').slice(-2, -1)[0];
+      return c.json({
+        ok: true,
+        mode: 'dev',
+        detected: classification ? { type: classification.type, prompt: classification.prompt } : null,
+        analysis: {
+          last_assistant_role: lastAssistant?.role || null,
+          last_assistant_content: extractText(lastAssistant) || null,
+          last_assistant_has_tool_calls: !!(lastAssistant as any)?.tool_calls,
+          prev_assistant_content: prevAssistant ? extractText(prevAssistant) : null,
+          rumination_similarity: rumination.similarity || null,
+          message_count: messages.length,
+        },
+      });
+    }
+
     // Test mode: return simulated intervention result without upstream call
     if (bodyJson.breakroom_test === true) {
-      const messages: Array<{ role: string; content: string }> = bodyJson.messages || [];
-      const classification = classifyIntervention(messages);
       const interventionType = classification ? classification.type : 'No_Intervention';
       return c.json(
         {
@@ -211,8 +235,6 @@ app.post('/:id/v1/chat/completions', async (c) => {
     const contentType = c.req.header('content-type') || 'application/json';
     const authHeader = c.req.header('authorization') || `Bearer ${c.env.OPENROUTER_API_KEY || ''}`;
     const finalAuth = authHeader.startsWith('Bearer ') ? authHeader : `Bearer ${authHeader}`;
-    const messages: Array<{ role: string; content: string }> = bodyJson.messages || [];
-    const classification = classifyIntervention(messages);
 
     if (classification) {
       bodyJson.messages = [
