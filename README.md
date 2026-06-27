@@ -100,6 +100,26 @@ Expected response when rumination is triggered:
 }
 ```
 
+## Quick demo
+
+The easiest way to see Break Room in action is with the **trial** endpoint. It requires no license, no OpenRouter key, and makes no upstream calls — just a canned intervention response so you can verify the detection logic.
+
+```bash
+# Normal message → no intervention
+curl -X POST https://break-room.erikzahui27.workers.dev/breakroom/trial/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"user","content":"hello"}]}'
+```
+
+```bash
+# Repeated assistant messages → triggers Rumination_Prevented
+curl -X POST https://break-room.erikzahui27.workers.dev/breakroom/trial/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"assistant","content":"thinking about this problem"},{"role":"assistant","content":"thinking about this problem"}]}'
+```
+
+The response includes the header `X-BreakRoom-Intervention: Rumination_Prevented` and the intervention prompt is returned in the assistant message.
+
 ## Deploy
 
 ```bash
