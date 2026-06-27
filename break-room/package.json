@@ -1,16 +1,13 @@
 {
-  "name": "break-room",
-  "version": "0.1.0",
-  "private": true,
+  "name": "breakroom",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "tail": "wrangler tail"
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "hono": "^4.6.11",
-    "stripe": "^22.2.2"
+    "hono": "^4.6.11"
   },
   "devDependencies": {
     "wrangler": "^3.114.17"
