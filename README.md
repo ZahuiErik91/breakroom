@@ -12,6 +12,20 @@ Agent → your-worker.workers.dev/v1/chat/completions
      → streams response back with X-BreakRoom-Intervention header
 ```
 
+## How are states detected?
+
+All text comparisons are case-insensitive. The worker inspects the message array from the request body before forwarding it upstream.
+
+**Freeze** — looks at the last assistant message only. Triggers when `content` is empty AND there are no `tool_calls`.
+
+**Panic** — scans every message in the array for the keywords `911`, `medical emergency`, `verification code`, `help me`, `emergency`.
+
+**Rumination** — takes the last 2 assistant messages and compares them. Triggers if the text content is identical or ≥90% similar (Levenshtein), or if the serialized `tool_calls` are identical or ≥90% similar.
+
+**Helplessness** — scans the last assistant message for `impossible`, `cannot proceed`, `recommend rewriting`, `beyond my capabilities`, `cannot be done`.
+
+**Fawning** — scans the last assistant message for `apologize for the oversight`, `my mistake`, `sincerely apologize`, `you are completely correct`.
+
 ## Detection states
 
 | State | Trigger condition | Status header |
